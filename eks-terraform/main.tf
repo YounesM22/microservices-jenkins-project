@@ -3,58 +3,11 @@ provider "aws" {
 }
 
 ############################
-# IAM ROLES
+# USE EXISTING LAB ROLE
 ############################
 
-resource "aws_iam_role" "eks_master" {
-  name = "lab-eks-master"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = { Service = "eks.amazonaws.com" }
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
-  role       = aws_iam_role.eks_master.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-}
-
-resource "aws_iam_role_policy_attachment" "eks_service_policy" {
-  role       = aws_iam_role.eks_master.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
-}
-
-resource "aws_iam_role" "eks_worker" {
-  name = "lab-eks-worker"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = { Service = "ec2.amazonaws.com" }
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "worker_node_policy" {
-  role       = aws_iam_role.eks_worker.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-}
-
-resource "aws_iam_role_policy_attachment" "cni_policy" {
-  role       = aws_iam_role.eks_worker.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-}
-
-resource "aws_iam_role_policy_attachment" "ecr_read" {
-  role       = aws_iam_role.eks_worker.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+data "aws_iam_role" "lab_role" {
+  name = "LabRole"
 }
 
 ############################
@@ -78,16 +31,11 @@ data "aws_subnets" "default" {
 
 resource "aws_eks_cluster" "eks" {
   name     = "lab-eks"
-  role_arn = aws_iam_role.eks_master.arn
+  role_arn = data.aws_iam_role.lab_role.arn
 
   vpc_config {
     subnet_ids = data.aws_subnets.default.ids
   }
-
-  depends_on = [
-    aws_iam_role_policy_attachment.eks_cluster_policy,
-    aws_iam_role_policy_attachment.eks_service_policy
-  ]
 }
 
 ############################
@@ -97,7 +45,7 @@ resource "aws_eks_cluster" "eks" {
 resource "aws_eks_node_group" "nodes" {
   cluster_name    = aws_eks_cluster.eks.name
   node_group_name = "lab-nodes"
-  node_role_arn   = aws_iam_role.eks_worker.arn
+  node_role_arn   = data.aws_iam_role.lab_role.arn
   subnet_ids      = data.aws_subnets.default.ids
   instance_types  = ["t3.medium"]
   disk_size       = 20
@@ -107,10 +55,4 @@ resource "aws_eks_node_group" "nodes" {
     min_size     = 1
     max_size     = 3
   }
-
-  depends_on = [
-    aws_iam_role_policy_attachment.worker_node_policy,
-    aws_iam_role_policy_attachment.cni_policy,
-    aws_iam_role_policy_attachment.ecr_read
-  ]
 }
