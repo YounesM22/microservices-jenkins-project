@@ -53,7 +53,7 @@ pipeline {
         stage('Update Kubernetes Manifest') {
             steps {
                 dir('kubernetes-files') {
-                    withCredentials([string(credentialsId: 'github-creds', variable: 'GIT_TOKEN')]) {
+                    withCredentials([string(credentialsId: 'github-token', variable: 'git_token')]) {
                         sh '''
                             git config user.email "${GIT_EMAIL}"
                             git config user.name "${GIT_USER}"
@@ -61,7 +61,7 @@ pipeline {
                             sed -i "s#image:.*#image: ${ECR_REPO}:${BUILD_NUMBER}#g" ${K8S_FILE}
 
                             git add .
-                            git commit -m "Update cartservice image to ${BUILD_NUMBER}"
+                            git diff --quiet || git commit -m "Update ${IMAGE_NAME} Image to version ${BUILD_NUMBER}"
                             git push https://${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git HEAD:main
                         '''
                     }
