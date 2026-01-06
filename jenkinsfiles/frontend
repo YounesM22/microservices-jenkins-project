@@ -50,25 +50,27 @@ pipeline {
         }
 
         stage('Update Kubernetes Manifest') {
-    dir('kubernetes-files') {
-        withCredentials([string(credentialsId: 'github-token', variable: 'GIT_TOKEN')]) {
-            sh '''
-            git config user.email "younes@example.com"
-            git config user.name "YounesM22"
+            steps {
+                dir('kubernetes-files') {
+                    withCredentials([string(credentialsId: 'github-token', variable: 'GIT_TOKEN')]) {
+                        sh '''
+                            git config user.email "${GIT_EMAIL}"
+                            git config user.name "${GIT_USER}"
 
-            sed -i 's#image:.*#image: 730335658699.dkr.ecr.us-east-1.amazonaws.com/frontend:1#g' frontend.yaml
+                            sed -i "s#image:.*#image: ${ECR_REPO}:${BUILD_NUMBER}#g" ${K8S_FILE}
 
-            git add .
-            if ! git diff --cached --quiet; then
-              git commit -m "Update frontend image tag"
-              git push https://$GIT_TOKEN@github.com/YounesM22/microservices-jenkins-project.git HEAD:main
-            else
-              echo "No changes to commit"
-            fi
-            '''
+                            git add .
+                            if ! git diff --cached --quiet; then
+                                git commit -m "Update ${IMAGE_NAME} image to build ${BUILD_NUMBER}"
+                                git push https://${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git HEAD:main
+                            else
+                                echo "No changes to commit"
+                            fi
+                        '''
+                    }
+                }
+            }
         }
-    }
-}
 
     }
 }
