@@ -2,15 +2,14 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = "us-east-1"
-        ACCOUNT_ID = "730335658699"
-        IMAGE_NAME = "checkoutservice"
-        ECR_REPO   = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_NAME}"
-
-        GIT_USER   = "YounesM22"
-        GIT_EMAIL  = "younes@example.com"
-        GIT_REPO   = "microservices-jenkins-project"
-        K8S_FILE   = "checkoutservice.yaml"
+        AWS_REGION   = "us-east-1"
+        ACCOUNT_ID   = "730335658699"
+        IMAGE_NAME   = "checkoutservice"
+        ECR_REPO     = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_NAME}"
+        GIT_REPO     = "microservices-jenkins-project"
+        GIT_USER     = "YounesM22"
+        GIT_EMAIL    = "younes@example.com"
+        K8S_FILE     = "checkoutservice.yaml"
     }
 
     stages {
@@ -53,7 +52,7 @@ pipeline {
         stage('Update Kubernetes Manifest') {
             steps {
                 dir('kubernetes-files') {
-                    withCredentials([string(credentialsId: 'github-token', variable: 'git_token')]) {
+                    withCredentials([string(credentialsId: 'github-token', variable: 'GIT_TOKEN')]) {
                         sh '''
                             git config user.email "${GIT_EMAIL}"
                             git config user.name "${GIT_USER}"
@@ -61,12 +60,17 @@ pipeline {
                             sed -i "s#image:.*#image: ${ECR_REPO}:${BUILD_NUMBER}#g" ${K8S_FILE}
 
                             git add .
-                            git diff --quiet || git commit -m "Update ${IMAGE_NAME} Image to version ${BUILD_NUMBER}"
-                            git push https://${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git HEAD:main
+                            if ! git diff --cached --quiet; then
+                                git commit -m "Update ${IMAGE_NAME} image to build ${BUILD_NUMBER}"
+                                git push https://${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git HEAD:main
+                            else
+                                echo "No changes to commit"
+                            fi
                         '''
                     }
                 }
             }
         }
+
     }
 }
