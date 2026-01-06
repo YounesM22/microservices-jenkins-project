@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "us-east-1"  # Change as needed
+  region = "us-east-1"
 }
 
 locals {
@@ -8,7 +8,13 @@ locals {
     "cartservice",
     "productcatalogservice",
     "paymentservice",
-    "checkoutservice"
+    "checkoutservice",
+    "adservice",
+    "currencyservice",
+    "emailservice",
+    "shippingservice",
+    "recommendationservice",
+    "loadgenerator"
   ]
 }
 
@@ -25,7 +31,6 @@ resource "aws_ecr_repository" "services" {
     encryption_type = "AES256"
   }
 
-  # ✅ This line tells AWS to delete all images before deleting the repo
   force_delete = true
 
   tags = {
